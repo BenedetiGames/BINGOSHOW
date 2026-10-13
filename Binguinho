@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bingo</title>
+<style>
+:root{
+  --bg:#0e1320;--panel:#161d2d;--panel2:#202a42;--text:#eef2fa;--muted:#8c98b4;--line:#27314a;
+  --accent:#ffc83d;--accent-ink:#1d1500;--hit:#2fbf71;--miss:#e5484d;
+  --B:#3d8bff;--I:#ef5350;--N:#b67cff;--G:#2fbf71;--O:#ffa726;--X:#ffc83d;
+  --ball:min(24vw,38vh,340px);
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;display:flex;flex-direction:column;min-height:100vh}
+header{display:flex;align-items:center;flex-wrap:wrap;gap:10px 14px;padding:12px 20px;border-bottom:1px solid var(--line)}
+h1{margin:0;flex:1;min-width:180px;font-size:clamp(22px,2.4vw,34px);font-weight:800;outline:none;border-radius:8px;padding:2px 8px;cursor:text}
+h1:hover{background:rgba(255,255,255,.04)}
+h1:focus{background:var(--panel2)}
+.pill{background:var(--panel2);border-radius:999px;padding:6px 12px;color:var(--muted);font-size:clamp(13px,1.2vw,17px);white-space:nowrap}
+.pill b{color:var(--text)}
+select{font:inherit;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:7px 10px;cursor:pointer}
+main{flex:1;display:grid;grid-template-columns:minmax(300px,32%) 1fr;gap:18px;padding:18px;min-height:0}
+.left{display:flex;flex-direction:column;gap:14px;min-width:0}
+.stage{flex:1;background:var(--panel);border-radius:20px;padding:20px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px}
+.ball{--ballc:#6b7280;width:var(--ball);height:var(--ball);border-radius:50%;background:radial-gradient(circle at 34% 28%,#fff 0,#e9edf6 45%,#b9c2d8 100%);border:calc(var(--ball)*.045) solid var(--ballc);display:flex;flex-direction:column;align-items:center;justify-content:center;color:#121826;box-shadow:0 20px 40px rgba(0,0,0,.45);user-select:none;cursor:pointer}
+.ball .letter{font-size:calc(var(--ball)*.15);font-weight:900;color:var(--ballc);line-height:1}
+.ball .letter:empty{display:none}
+.ball .num{font-size:calc(var(--ball)*.42);font-weight:900;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.ball.empty{cursor:default}
+.ball.empty .num{font-size:calc(var(--ball)*.095);color:#6b7280;font-weight:700;text-align:center;line-height:1.25;letter-spacing:0}
+.ball.rolling{animation:wob .12s linear infinite}
+.ball.pop{animation:pop .5s cubic-bezier(.2,1.6,.4,1)}
+@keyframes wob{0%{transform:rotate(-5deg)}50%{transform:rotate(5deg)}100%{transform:rotate(-5deg)}}
+@keyframes pop{0%{transform:scale(.55)}100%{transform:scale(1)}}
+.last-label{color:var(--muted);font-size:13px;text-transform:uppercase;letter-spacing:.12em}
+.last{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;min-height:44px;align-items:center}
+.chip{min-width:44px;height:44px;padding:0 12px;border-radius:22px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;background:var(--c);color:#0b0f1a;font-variant-numeric:tabular-nums}
+.muted-sm{color:var(--muted)}
+.controls{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+button{font:inherit;font-weight:650;border:0;border-radius:12px;padding:12px 14px;background:var(--panel2);color:var(--text);cursor:pointer;transition:filter .15s,transform .1s}
+button:hover:not(:disabled){filter:brightness(1.18)}
+button:active:not(:disabled){transform:translateY(1px)}
+button:disabled{opacity:.4;cursor:not-allowed}
+.primary{grid-column:1/-1;background:var(--accent);color:var(--accent-ink);font-size:clamp(22px,2.2vw,32px);font-weight:900;padding:18px;letter-spacing:.02em}
+kbd{font:600 .45em system-ui,sans-serif;border:1.5px solid currentColor;border-radius:6px;padding:2px 6px;vertical-align:middle;opacity:.6;margin-left:10px}
+.danger{color:#ff9a9c}
+.ghost{background:transparent;border:1px solid var(--line)}
+.hint{color:var(--muted);font-size:13px;text-align:center;line-height:1.6}
+.board{--cols:15;background:var(--panel);border-radius:20px;padding:14px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.row{display:grid;grid-template-columns:repeat(var(--cols),1fr);gap:6px;flex:1}
+.row.lettered{grid-template-columns:clamp(26px,3vw,48px) repeat(var(--cols),1fr)}
+.rlabel{display:flex;align-items:center;justify-content:center;font-weight:900;font-size:clamp(18px,2.4vw,40px)}
+.cell{padding:0;min-height:34px;border-radius:10px;background:var(--panel2);color:#56627f;font-size:clamp(13px,1.6vw,28px);font-weight:800;font-variant-numeric:tabular-nums;transition:background .25s,color .25s,transform .25s}
+.cell.on{background:var(--c);color:#0b0f1a}
+.cell.latest{outline:3px solid #fff;outline-offset:2px;transform:scale(1.08);position:relative;z-index:1}
+dialog{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:18px;padding:20px;width:min(560px,calc(100vw - 32px));max-height:calc(100vh - 32px)}
+dialog::backdrop{background:rgba(5,8,15,.72)}
+.dlg-head{display:flex;align-items:center;justify-content:space-between;margin:0 0 6px}
+.dlg-head h2{margin:0;font-size:22px}
+.dlg-head button{padding:6px 12px}
+dialog p{color:var(--muted);margin:6px 0 12px;line-height:1.45}
+textarea{width:100%;font:inherit;font-size:20px;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:12px;padding:12px;resize:vertical}
+.btns{display:flex;gap:10px;margin:12px 0}
+.btn-accent{background:var(--accent);color:var(--accent-ink);font-weight:800}
+.verdict{border-radius:12px;padding:12px 14px;font-weight:800;font-size:18px;margin-bottom:10px}
+.verdict.good{background:rgba(47,191,113,.18);color:#6ee7a8}
+.verdict.bad{background:rgba(229,72,77,.16);color:#ff9a9c}
+.nums{display:flex;flex-wrap:wrap;gap:6px}
+.n{min-width:40px;height:40px;border-radius:20px;display:flex;align-items:center;justify-content:center;font-weight:800;padding:0 8px}
+.n.hit{background:var(--hit);color:#06210f}
+.n.miss{border:2px solid var(--miss);color:#ff9a9c}
+details{margin-top:14px;color:var(--muted)}
+summary{cursor:pointer}
+.order{margin-top:8px;line-height:1.9;color:var(--text)}
+@media (max-width:900px){
+  :root{--ball:min(60vw,280px)}
+  main{grid-template-columns:1fr}
+  .board{min-height:60vh}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1 id="title" contenteditable="true" spellcheck="false" title="Clique para editar o título">Bingo SIPAT</h1>
+  <span class="pill" id="round">Rodada 1</span>
+  <span class="pill">Sorteados: <b id="count">0</b> / <span id="total">75</span></span>
+  <select id="mode" title="Quantidade de números">
+    <option value="75">1 a 75 (B-I-N-G-O)</option>
+    <option value="90">1 a 90</option>
+  </select>
+  <button id="fs" class="ghost" title="Tela cheia (F)">⛶ Tela cheia</button>
+</header>
+
+<main>
+  <section class="left">
+    <div class="stage">
+      <div class="ball empty" id="ball" title="Clique para repetir o número (R)">
+        <div class="letter" id="ballLetter"></div>
+        <div class="num" id="ballNum">Aperte<br>Sortear</div>
+      </div>
+      <div class="last-label">Anteriores</div>
+      <div class="last" id="last"></div>
+    </div>
+    <div class="controls">
+      <button class="primary" id="draw"><span id="drawLabel">Sortear</span><kbd>Espaço</kbd></button>
+      <button id="check">🔍 Conferir cartela</button>
+      <button id="voice">🔊 Voz ligada</button>
+      <button id="undo">↶ Desfazer último</button>
+      <button id="reset" class="danger">⟳ Nova rodada</button>
+    </div>
+    <div class="hint">Espaço: sortear · R: repetir · F: tela cheia<br>Clique num número do painel para marcar à mão (se usar globo físico)</div>
+  </section>
+  <section class="board" id="board"></section>
+</main>
+
+<dialog id="dlg">
+  <form method="dialog" class="dlg-head">
+    <h2>Conferir cartela</h2>
+    <button class="ghost" aria-label="Fechar">✕</button>
+  </form>
+  <p>Digite os números da cartela do ganhador, separados por espaço ou vírgula, e aperte Enter.</p>
+  <textarea id="nums" rows="3" placeholder="ex.: 4 18 33 47 62"></textarea>
+  <div class="btns">
+    <button id="doCheck" class="btn-accent">Conferir</button>
+    <button id="clearCheck" class="ghost">Limpar</button>
+  </div>
+  <div id="result"></div>
+  <details>
+    <summary id="orderSummary">Ordem do sorteio</summary>
+    <div class="order" id="order"></div>
+  </details>
+</dialog>
+
+<script>
+(function(){
+  var $ = function(id){ return document.getElementById(id); };
+  var KEY = 'bingo-local-v1';
+  var LETTERS = 'BINGO';
+  var NAMES = {B:'Bê', I:'I', N:'Ene', G:'Gê', O:'Ó'};
+
+  var state = {max:75, drawn:[], round:1, voice:true, title:'Bingo SIPAT'};
+  try{
+    var s = JSON.parse(localStorage.getItem(KEY) || 'null');
+    if(s && (s.max === 75 || s.max === 90) && Array.isArray(s.drawn)){
+      state = Object.assign(state, s);
+      var seen = {};
+      state.drawn = s.drawn.filter(function(n){
+        var ok = Number.isInteger(n) && n >= 1 && n <= s.max && !seen[n];
+        seen[n] = true; return ok;
+      });
+    }
+  }catch(e){}
+  function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
+
+  var els = {};
+  ['title','round','count','total','mode','fs','ball','ballLetter','ballNum','last','draw','drawLabel',
+   'check','voice','undo','reset','board','dlg','nums','doCheck','clearCheck','result','order','orderSummary']
+   .forEach(function(id){ els[id] = $(id); });
+
+  var cells = {};
+  var rolling = false;
+
+  function letterOf(n){ return state.max === 75 ? LETTERS[Math.floor((n-1)/15)] : ''; }
+  function colorOf(n){ var l = letterOf(n); return l ? 'var(--' + l + ')' : 'var(--X)'; }
+  function label(n){ var l = letterOf(n); return l ? l + ' ' + n : String(n); }
+  function lastDrawn(){ return state.drawn[state.drawn.length - 1]; }
+
+  function randInt(n){
+    if(window.crypto && crypto.getRandomValues){
+      var a = new Uint32Array(1), lim = Math.floor(4294967296 / n) * n, x;
+      do{ crypto.getRandomValues(a); x = a[0]; } while(x >= lim);
+      return x % n;
+    }
+    return Math.floor(Math.random() * n);
+  }
+
+  function buildBoard(){
+    els.board.innerHTML = ''; cells = {};
+    var c = state.max === 75 ? 15 : 10, rows = state.max / c;
+    els.board.style.setProperty('--cols', c);
+    for(var r = 0; r < rows; r++){
+      var row = document.createElement('div');
+      row.className = 'row' + (state.max === 75 ? ' lettered' : '');
+      if(state.max === 75){
+        var lab = document.createElement('div');
+        lab.className = 'rlabel'; lab.textContent = LETTERS[r];
+        lab.style.color = 'var(--' + LETTERS[r] + ')';
+        row.appendChild(lab);
+      }
+      for(var i = 1; i <= c; i++){
+        (function(n){
+          var b = document.createElement('button');
+          b.className = 'cell'; b.textContent = n;
+          b.style.setProperty('--c', colorOf(n));
+          b.addEventListener('click', function(){ toggleManual(n); });
+          row.appendChild(b); cells[n] = b;
+        })(r * c + i);
+      }
+      els.board.appendChild(row);
+    }
+  }
+
+  function setBall(n){
+    els.ball.classList.remove('empty');
+    els.ball.style.setProperty('--ballc', colorOf(n));
+    els.ballLetter.textContent = letterOf(n);
+    els.ballNum.textContent = n;
+  }
+  function setEmpty(){
+    els.ball.classList.add('empty');
+    els.ball.style.removeProperty('--ballc');
+    els.ballLetter.textContent = '';
+    els.ballNum.innerHTML = 'Aperte<br>Sortear';
+  }
+
+  function render(pop){
+    var set = {}; state.drawn.forEach(function(n){ set[n] = true; });
+    var last = lastDrawn(), done = state.drawn.length >= state.max;
+    for(var k in cells){
+      var n = +k;
+      cells[k].classList.toggle('on', !!set[n]);
+      cells[k].classList.toggle('latest', n === last);
+    }
+    els.count.textContent = state.drawn.length;
+    els.total.textContent = state.max;
+    els.round.textContent = 'Rodada ' + state.round;
+    if(!rolling){ if(last) setBall(last); else setEmpty(); }
+    if(pop){ els.ball.classList.remove('pop'); void els.ball.offsetWidth; els.ball.classList.add('pop'); }
+
+    els.last.innerHTML = '';
+    var prev = state.drawn.slice(0, -1).slice(-6).reverse();
+    if(!prev.length){ els.last.innerHTML = '<span class="muted-sm">—</span>'; }
+    prev.forEach(function(n, i){
+      var sp = document.createElement('span');
+      sp.className = 'chip'; sp.textContent = label(n);
+      sp.style.setProperty('--c', colorOf(n));
+      sp.style.opacity = String(1 - i * 0.12);
+      els.last.appendChild(sp);
+    });
+
+    els.draw.disabled = rolling || done;
+    els.drawLabel.textContent = done ? 'Todos sorteados!' : (rolling ? 'Sorteando…' : 'Sortear');
+    els.undo.disabled = rolling || !state.drawn.length;
+    els.reset.disabled = rolling;
+    els.mode.disabled = rolling;
+    els.voice.textContent = state.voice ? '🔊 Voz ligada' : '🔇 Voz desligada';
+    els.mode.value = String(state.max);
+  }
+
+  function pickVoice(){
+    try{
+      var vs = speechSynthesis.getVoices();
+      return vs.find(function(v){ return /^pt[-_]BR/i.test(v.lang); }) ||
+             vs.find(function(v){ return /^pt/i.test(v.lang); }) || null;
+    }catch(e){ return null; }
+  }
+  function speak(t){
+    if(!state.voice || !('speechSynthesis' in window)) return;
+    try{
+      speechSynthesis.cancel();
+      var u = new SpeechSynthesisUtterance(t);
+      u.lang = 'pt-BR'; var v = pickVoice(); if(v) u.voice = v;
+      u.rate = 0.92;
+      speechSynthesis.speak(u);
+    }catch(e){}
+  }
+  function announce(n){
+    var l = letterOf(n);
+    var t = (l ? NAMES[l] + ', ' : '') + n + '.';
+    if(n >= 10) t += ' ' + String(n).split('').join(', ') + '.';
+    speak(t);
+  }
+  if('speechSynthesis' in window){ try{ speechSynthesis.getVoices(); speechSynthesis.onvoiceschanged = function(){}; }catch(e){} }
+
+  function draw(){
+    if(rolling) return;
+    var set = {}; state.drawn.forEach(function(n){ set[n] = true; });
+    var rem = [];
+    for(var n = 1; n <= state.max; n++) if(!set[n]) rem.push(n);
+    if(!rem.length) return;
+    rolling = true; render();
+    try{ speechSynthesis.cancel(); }catch(e){}
+    var pick = rem[randInt(rem.length)];
+    els.ball.classList.add('rolling');
+    setBall(rem[randInt(rem.length)]);
+    var iv = setInterval(function(){ setBall(rem[randInt(rem.length)]); }, 70);
+    setTimeout(function(){
+      clearInterval(iv);
+      els.ball.classList.remove('rolling');
+      state.drawn.push(pick); save();
+      rolling = false;
+      render(true); announce(pick);
+    }, 1100);
+  }
+
+  function toggleManual(n){
+    if(rolling) return;
+    var i = state.drawn.indexOf(n);
+    if(i === -1){
+      state.drawn.push(n); save(); render(true); announce(n);
+    }else{
+      if(!confirm('Desmarcar o ' + label(n) + '?')) return;
+      state.drawn.splice(i, 1); save(); render();
+    }
+  }
+
+  function undo(){
+    if(rolling || !state.drawn.length) return;
+    if(!confirm('Desfazer o último número (' + label(lastDrawn()) + ')?')) return;
+    state.drawn.pop(); save(); render();
+  }
+
+  function newRound(){
+    if(rolling) return;
+    var msg = state.drawn.length
+      ? 'Começar uma nova rodada? Os ' + state.drawn.length + ' números sorteados serão apagados do painel.'
+      : 'Começar a rodada ' + (state.round + 1) + '?';
+    if(!confirm(msg)) return;
+    state.drawn = []; state.round++; save(); render();
+  }
+
+  function changeMode(){
+    var v = +els.mode.value;
+    if(v === state.max) return;
+    if(state.drawn.length && !confirm('Trocar o modo zera a rodada atual. Continuar?')){
+      els.mode.value = String(state.max); return;
+    }
+    state.max = v; state.drawn = []; save(); buildBoard(); render();
+  }
+
+  function toggleFs(){
+    try{
+      if(document.fullscreenElement) document.exitFullscreen();
+      else document.documentElement.requestFullscreen();
+    }catch(e){}
+  }
+
+  function fillOrder(){
+    els.orderSummary.textContent = 'Ordem do sorteio (' + state.drawn.length + ')';
+    els.order.textContent = state.drawn.length
+      ? state.drawn.map(function(n, i){ return (i + 1) + 'º ' + label(n); }).join('  ·  ')
+      : 'Nenhum número sorteado ainda.';
+  }
+
+  function doCheck(){
+    var raw = els.nums.value;
+    var list = (raw.match(/\d+/g) || []).map(Number);
+    var nums = list.filter(function(n, i){ return list.indexOf(n) === i; });
+    els.result.innerHTML = '';
+    if(!nums.length){ els.result.innerHTML = '<p>Nenhum número digitado.</p>'; return; }
+    var set = {}; state.drawn.forEach(function(n){ set[n] = true; });
+    var invalid = nums.filter(function(n){ return n < 1 || n > state.max; });
+    var valid = nums.filter(function(n){ return n >= 1 && n <= state.max; }).sort(function(a,b){ return a-b; });
+    var missing = valid.filter(function(n){ return !set[n]; });
+
+    var v = document.createElement('div');
+    var ok = !missing.length && !invalid.length;
+    v.className = 'verdict ' + (ok ? 'good' : 'bad');
+    if(ok){
+      v.textContent = '✓ BINGO! Todos os ' + valid.length + ' números foram sorteados.';
+    }else{
+      var t = missing.length === 1 ? '✗ 1 número ainda não foi sorteado'
+            : missing.length ? '✗ ' + missing.length + ' números ainda não foram sorteados' : '✗ Confira os números';
+      if(invalid.length) t += ' · fora do intervalo: ' + invalid.join(', ');
+      v.textContent = t;
+    }
+    els.result.appendChild(v);
+
+    var wrap = document.createElement('div'); wrap.className = 'nums';
+    valid.forEach(function(n){
+      var c = document.createElement('span');
+      c.className = 'n ' + (set[n] ? 'hit' : 'miss');
+      c.textContent = label(n);
+      wrap.appendChild(c);
+    });
+    els.result.appendChild(wrap);
+  }
+
+  els.draw.addEventListener('click', draw);
+  els.undo.addEventListener('click', undo);
+  els.reset.addEventListener('click', newRound);
+  els.mode.addEventListener('change', changeMode);
+  els.fs.addEventListener('click', toggleFs);
+  els.voice.addEventListener('click', function(){
+    state.voice = !state.voice; save(); render();
+    if(!state.voice){ try{ speechSynthesis.cancel(); }catch(e){} }
+  });
+  els.ball.addEventListener('click', function(){ var l = lastDrawn(); if(l && !rolling) announce(l); });
+  els.check.addEventListener('click', function(){
+    fillOrder(); els.dlg.showModal();
+    setTimeout(function(){ els.nums.focus(); }, 50);
+  });
+  els.doCheck.addEventListener('click', doCheck);
+  els.clearCheck.addEventListener('click', function(){ els.nums.value = ''; els.result.innerHTML = ''; els.nums.focus(); });
+  els.nums.addEventListener('keydown', function(e){ if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); doCheck(); } });
+
+  els.title.addEventListener('input', function(){
+    state.title = els.title.textContent.trim() || 'Bingo';
+    document.title = state.title; save();
+  });
+  els.title.addEventListener('keydown', function(e){ if(e.key === 'Enter'){ e.preventDefault(); els.title.blur(); } });
+  els.title.addEventListener('paste', function(e){
+    e.preventDefault();
+    var t = (e.clipboardData || window.clipboardData).getData('text') || '';
+    document.execCommand('insertText', false, t.replace(/\s+/g, ' '));
+  });
+
+  // Tira o foco dos botões depois do clique, para o Espaço sempre sortear
+  document.addEventListener('click', function(e){
+    var b = e.target.closest && e.target.closest('button');
+    if(b && !els.dlg.contains(b)) b.blur();
+  });
+  document.addEventListener('keydown', function(e){
+    if(els.dlg.open) return;
+    var t = e.target;
+    if(t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return;
+    if(e.ctrlKey || e.metaKey || e.altKey) return;
+    if(e.code === 'Space' || e.key === 'Enter'){ e.preventDefault(); draw(); }
+    else if(e.key === 'f' || e.key === 'F'){ toggleFs(); }
+    else if(e.key === 'r' || e.key === 'R'){ var l = lastDrawn(); if(l && !rolling) announce(l); }
+  });
+
+  els.title.textContent = state.title;
+  document.title = state.title;
+  buildBoard();
+  render();
+})();
+</script>
+</body>
+</html>
